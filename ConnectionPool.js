@@ -56,7 +56,6 @@ class ConnectionPool {
             const connection = new Connection(this._dbConfig);
             connection.connect();
             connection.on('connect', () => {
-                console.log('connection!!!!!!');
                 connection.index = (this._pool.push(connection) - 1);
                 if (this._pauseCreation === true) this._pauseCreation = false;
                 resolve(connection);

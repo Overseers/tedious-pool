@@ -1,4 +1,4 @@
-const { Connection, ...otherMethods } = require('tedious');
+const { Connection } = require('tedious');
 
 /*
 * Wrapper for tedious so that a pool can be made without
@@ -20,8 +20,8 @@ class ConnectionPool {
     _pool = [];
     _pauseCreation = false;
 
-    // waiting for ready conditions to be met in constructor https://stackoverflow.com/a/50885340
-    constructor(dbConfig, poolConfig) {
+    // Waiting for ready conditions to be met in constructor https://stackoverflow.com/a/50885340
+    constructor(dbConfig, poolConfig = {}) {
         return (async () => {
             this._dbConfig = dbConfig;
             this._poolConfig = { ...this._poolConfig, ...poolConfig };
@@ -56,17 +56,20 @@ class ConnectionPool {
             const connection = new Connection(this._dbConfig);
             connection.connect();
             connection.on('connect', () => {
+                console.log('connection!!!!!!');
                 connection.index = (this._pool.push(connection) - 1);
                 if (this._pauseCreation === true) this._pauseCreation = false;
                 resolve(connection);
             });
             connection.on('end', () => {
                 this._pool = this._pool.filter((e, i) => (i !== connection.index));
-                // everything after index those connection.index needs to be reduced by 1 to account for removed connection
+                // Everything after index those connection.index needs to be reduced by 1 to account for removed connection
                 for (let x = connection.index; x < (this._pool.length - 1); x++) this._pool[x].index = (this._pool[x].index - 1);
                 if (this._pool.length < this._dbConfig.min) this.createConnection();
             });
-            connection.on('error', (err) => console.error('[TDS-POOL][ERROR] - ', err));
+            // connection.on('debug', (msg) => console.log('TEDIOUS DEBUG: ', msg));
+            connection.on('error', (err) => console.error('[tedious][error] - ', err));
+            connection.on('errorMessage', (err) => console.error('[tedious][errorMessage] - ', err));
         });
     }
 
@@ -157,8 +160,4 @@ class ConnectionPool {
     }
 }
 
-module.exports = {
-    ConnectionPool,
-    Connection,
-    ...otherMethods
-};
+module.exports = ConnectionPool;

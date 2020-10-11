@@ -1,6 +1,6 @@
 {
   "name": "tedious-pool",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Pooling mechanism for tedious connection",
   "main": "dist/ConnectionPool.js",
   "types": "dist/ConnectionPool.d.ts",

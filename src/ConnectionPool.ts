@@ -1,14 +1,15 @@
-const { Connection } = require('tedious');
+import { Connection, ConnectionConfig } from 'tedious';
+import { POOL_CONFIG, CONNECTION_POOLED } from './types';
 
 /*
-* Wrapper for tedious so that a pool can be made without
-* too much meddling in what tedious already does well
-* http://tediousjs.github.io/tedious/api-connection.html
-*/
+ * Wrapper for tedious so that a pool can be made without
+ * too much meddling in what tedious already does well
+ * http://tediousjs.github.io/tedious/api-connection.html
+ */
 
-class ConnectionPool {
-    _dbConfig;
-    _poolConfig = {
+export class ConnectionPool implements ConnectionPool {
+    _dbConfig: ConnectionConfig;
+    _poolConfig: POOL_CONFIG = {
         min: 1,
         max: 1,
         busyTimeout: 500,
@@ -17,11 +18,12 @@ class ConnectionPool {
             return this.busyTimeout / this.frequencyCheck;
         },
     };
-    _pool = [];
-    _pauseCreation = false;
+    _pool: CONNECTION_POOLED[] = [];
+    _pauseCreation: boolean = false;
 
     // Waiting for ready conditions to be met in constructor https://stackoverflow.com/a/50885340
-    constructor(dbConfig, poolConfig = {}) {
+    constructor(dbConfig: ConnectionConfig, poolConfig: POOL_CONFIG = {}) {
+        // @ts-ignore
         return (async () => {
             this._dbConfig = dbConfig;
             this._poolConfig = { ...this._poolConfig, ...poolConfig };
@@ -50,10 +52,10 @@ class ConnectionPool {
         })();
     }
 
-    createConnection() {
+    private createConnection(): Promise<CONNECTION_POOLED> {
         return new Promise((resolve) => {
             if (this._pool.length >= this._poolConfig.max) throw new Error('POOL_AT_MAX');
-            const connection = new Connection(this._dbConfig);
+            const connection: CONNECTION_POOLED = new Connection(this._dbConfig);
             connection.connect();
             connection.on('connect', () => {
                 connection.index = (this._pool.push(connection) - 1);
@@ -61,10 +63,10 @@ class ConnectionPool {
                 resolve(connection);
             });
             connection.on('end', () => {
-                this._pool = this._pool.filter((e, i) => (i !== connection.index));
+                this._pool = this._pool.filter((_, i) => (i !== connection.index));
                 // Everything after index those connection.index needs to be reduced by 1 to account for removed connection
                 for (let x = connection.index; x < (this._pool.length - 1); x++) this._pool[x].index = (this._pool[x].index - 1);
-                if (this._pool.length < this._dbConfig.min) this.createConnection();
+                if (this._pool.length < this._poolConfig.min) this.createConnection();
             });
             // connection.on('debug', (msg) => console.log('TEDIOUS DEBUG: ', msg));
             connection.on('error', (err) => console.error('[tedious][error] - ', err));
@@ -72,7 +74,7 @@ class ConnectionPool {
         });
     }
 
-    findConnection(checkCount = 0) {
+    private findConnection(checkCount = 0): Promise<number> {
         return new Promise(async (resolve, reject) => {
             const openConnection = this._pool.findIndex((connection) => connection.state.name === 'LoggedIn');
             if (openConnection === -1) {
@@ -158,5 +160,3 @@ class ConnectionPool {
         return this._pool[openConnection];
     }
 }
-
-module.exports = ConnectionPool;

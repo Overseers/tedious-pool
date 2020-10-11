@@ -1,0 +1,8 @@
+node_modules/*
+src/*
+toolbox/*
+package-lock.json
+tsconfig.json
+.gitignore
+.DS_Store
+TODO

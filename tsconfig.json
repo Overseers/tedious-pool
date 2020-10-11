@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "esModuleInterop": true,
+        "target": "ES2015",
+        "removeComments": true,
+        "outDir": "dist/",
+        "baseUrl": "./",
+        "declaration":true,
+        "noUnusedParameters": true,
+        "noUnusedLocals": true,
+        "noImplicitReturns": true,
+        "rootDirs": [ "./src" ]
+    }
+}

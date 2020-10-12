@@ -34,6 +34,7 @@ export type POOL_CONFIG = {
 
 export type CONNECTION_POOLED = {
     index?: number;
+    claimed?: boolean;
     state?: {
         name: string;
     };

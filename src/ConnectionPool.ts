@@ -66,27 +66,50 @@ export class ConnectionPool implements ConnectionPool {
                 this._pool = this._pool.filter((_, i) => (i !== connection.index));
                 // Everything after index those connection.index needs to be reduced by 1 to account for removed connection
                 for (let x = connection.index; x < (this._pool.length - 1); x++) this._pool[x].index = (this._pool[x].index - 1);
-                if (this._pool.length < this._poolConfig.min) this.createConnection();
+                if (this._pool.length < this._poolConfig.min) {
+                    this._pauseCreation = true;
+                    this.createConnection();
+                }
             });
-            // connection.on('debug', (msg) => console.log('TEDIOUS DEBUG: ', msg));
             connection.on('error', (err) => console.error('[tedious][error] - ', err));
             connection.on('errorMessage', (err) => console.error('[tedious][errorMessage] - ', err));
         });
     }
 
-    private findConnection(checkCount = 0): Promise<number> {
+    private findConnection(checkCount: number = 0): Promise<number> {
         return new Promise(async (resolve, reject) => {
-            const openConnection = this._pool.findIndex((connection) => connection.state.name === 'LoggedIn');
+            const openConnection = this._pool.findIndex((connection) => connection.state.name === 'LoggedIn' && !connection.claimed);
             if (openConnection === -1) {
                 if ((this._pool.length <= this._poolConfig.max) && !this._pauseCreation) {
                     this._pauseCreation = true;
-                    const newConnection = await this.createConnection();
-                    return newConnection.index;
+                    try {
+                        const newConnection: CONNECTION_POOLED = await this.createConnection();
+                        resolve(newConnection.index);
+                    } catch (err) {
+                        if (err.message === 'POOL_AT_MAX') {
+                            setTimeout(async () => {
+                                try {
+                                    const newConnection: CONNECTION_POOLED = await this.findConnection(checkCount + 1);
+                                    resolve(newConnection);
+                                } catch (newConnectionError) {
+                                    throw newConnectionError;
+                                }
+                            }, this._poolConfig.frequencyCheck);
+                        }
+                    }
                 } else {
-                    if (checkCount >= this._poolConfig.maxCheckCount()) reject(new Error('POOL_BUSY'));
-                    setTimeout(() => resolve(this.findConnection(checkCount + 1)), this._poolConfig.frequencyCheck);
+                    if (checkCount >= this._poolConfig.maxCheckCount()) return reject(new Error('POOL_BUSY'));
+                    setTimeout(async () => {
+                        try {
+                            const newConnection: CONNECTION_POOLED = await this.findConnection(checkCount + 1);
+                            resolve(newConnection);
+                        } catch (err) {
+                            throw err;
+                        }
+                    }, this._poolConfig.frequencyCheck);
                 }
             } else {
+                this._pool[openConnection].claimed = true;
                 resolve(openConnection);
             }
         });
@@ -110,25 +133,31 @@ export class ConnectionPool implements ConnectionPool {
      * - cancel
      * - reset
      */
-    async beginTransaction(callback, name, isolationLevel) {
+    async beginTransaction(callback: Function, name: string, isolationLevel: string) {
         const openConnection = await this.findConnection();
         await this._pool[openConnection].beginTransaction(callback, name, isolationLevel);
         return this._pool[openConnection];
     }
 
-    async callProcedure(request) {
+    async callProcedure(request: Request) {
         const openConnection = await this.findConnection();
         await this._pool[openConnection].callProcedure(request);
         return this._pool[openConnection];
     }
 
-    async execSql(request) {
-        const openConnection = await this.findConnection();
-        await this._pool[openConnection].execSql(request);
-        return this._pool[openConnection];
+    async execSql(request: Request) {
+        try {
+            const openConnection = await this.findConnection();
+            await this._pool[openConnection].execSql(request);
+            this._pool[openConnection].claimed = false;
+            return this._pool[openConnection];
+        } catch (err) {
+            console.log('ERROR> ', err);
+            throw err;
+        }
     }
 
-    async execSqlBatch(request) {
+    async execSqlBatch(request: Request) {
         const openConnection = await this.findConnection();
         await this._pool[openConnection].execSqlBatch(request);
         return this._pool[openConnection];
@@ -140,21 +169,21 @@ export class ConnectionPool implements ConnectionPool {
         return this._pool[openConnection];
     }
 
-    async execute(request, parameters) {
+    async execute(request: Request, parameters: {}) {
         const openConnection = await this.findConnection();
         await this._pool[openConnection].execute(request, parameters);
         return this._pool[openConnection];
     }
 
-    async prepare(request) {
+    async prepare(request: Request) {
         await Promise.all(this._pool.map(async (connection) => connection.prepare(request)));
     }
 
-    async unprepare(request) {
+    async unprepare(request: Request) {
         await Promise.all(this._pool.map(async (connection) => connection.unprepare(request)));
     }
 
-    async newBulkLoad(tableName, callback) {
+    async newBulkLoad(tableName: string, callback: Function) {
         const openConnection = await this.findConnection();
         await this._pool[openConnection].newBulkLoad(tableName, callback);
         return this._pool[openConnection];

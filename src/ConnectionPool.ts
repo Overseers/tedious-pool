@@ -71,8 +71,8 @@ export class ConnectionPool implements ConnectionPool {
                     this.createConnection();
                 }
             });
-            connection.on('error', (err) => console.error('[tedious][error] - ', err));
-            connection.on('errorMessage', (err) => console.error('[tedious][errorMessage] - ', err));
+            connection.on('error', (err) => console.error('tedious> error>', err));
+            connection.on('errorMessage', (err) => console.error('tedious> errorMessage>', err));
         });
     }
 
@@ -115,7 +115,7 @@ export class ConnectionPool implements ConnectionPool {
         });
     }
 
-    drain() {
+    drain(): void {
         this._pool.forEach((connection) => connection.close());
     }
 
@@ -133,59 +133,100 @@ export class ConnectionPool implements ConnectionPool {
      * - cancel
      * - reset
      */
-    async beginTransaction(callback: Function, name: string, isolationLevel: string) {
-        const openConnection = await this.findConnection();
-        await this._pool[openConnection].beginTransaction(callback, name, isolationLevel);
-        return this._pool[openConnection];
+    async beginTransaction(callback: Function, name: string, isolationLevel: string): Promise<CONNECTION_POOLED> {
+        try {
+            const openConnection = await this.findConnection();
+            await this._pool[openConnection].beginTransaction(callback, name, isolationLevel);
+            return this._pool[openConnection];
+        } catch (err) {
+            console.error('beginTransaction> ERROR>', err);
+            throw err;
+        }
     }
 
-    async callProcedure(request: Request) {
-        const openConnection = await this.findConnection();
-        await this._pool[openConnection].callProcedure(request);
-        return this._pool[openConnection];
+    async callProcedure(request: Request): Promise<CONNECTION_POOLED> {
+        try {
+            const openConnection = await this.findConnection();
+            await this._pool[openConnection].callProcedure(request);
+            return this._pool[openConnection];
+        } catch (err) {
+            console.error('callProcedure> ERROR>', err);
+            throw err;
+        }
     }
 
-    async execSql(request: Request) {
+    async execSql(request: Request): Promise<CONNECTION_POOLED> {
         try {
             const openConnection = await this.findConnection();
             await this._pool[openConnection].execSql(request);
             this._pool[openConnection].claimed = false;
             return this._pool[openConnection];
         } catch (err) {
-            console.log('ERROR> ', err);
+            console.error('execSql> ERROR>', err);
             throw err;
         }
     }
 
-    async execSqlBatch(request: Request) {
-        const openConnection = await this.findConnection();
-        await this._pool[openConnection].execSqlBatch(request);
-        return this._pool[openConnection];
+    async execSqlBatch(request: Request): Promise<CONNECTION_POOLED> {
+        try {
+            const openConnection = await this.findConnection();
+            await this._pool[openConnection].execSqlBatch(request);
+            return this._pool[openConnection];
+        } catch (err) {
+            console.error('execSqlBatch> ERROR>', err);
+            throw err;
+        }
     }
 
-    async execBulkLoad(bulkLoad) {
-        const openConnection = await this.findConnection();
-        await this._pool[openConnection].execBulkLoad(bulkLoad);
-        return this._pool[openConnection];
+    async execBulkLoad(bulkLoad): Promise<CONNECTION_POOLED> {
+        try {
+            const openConnection = await this.findConnection();
+            await this._pool[openConnection].execBulkLoad(bulkLoad);
+            return this._pool[openConnection];
+        } catch (err) {
+            console.error('execBulkLoad> ERROR>', err);
+            throw err;
+        }
     }
 
-    async execute(request: Request, parameters: {}) {
-        const openConnection = await this.findConnection();
-        await this._pool[openConnection].execute(request, parameters);
-        return this._pool[openConnection];
+    async execute(request: Request, parameters: {}): Promise<CONNECTION_POOLED> {
+        try {
+            const openConnection = await this.findConnection();
+            await this._pool[openConnection].execute(request, parameters);
+            return this._pool[openConnection];
+        } catch (err) {
+            console.error('execute> ERROR>', err);
+            throw err;
+        }
+
     }
 
-    async prepare(request: Request) {
-        await Promise.all(this._pool.map(async (connection) => connection.prepare(request)));
+    async prepare(request: Request): Promise<void> {
+        try {
+            await Promise.all(this._pool.map(async (connection) => connection.prepare(request)));
+        } catch (err) {
+            console.error('prepare> ERROR>', err);
+            throw err;
+        }
     }
 
-    async unprepare(request: Request) {
-        await Promise.all(this._pool.map(async (connection) => connection.unprepare(request)));
+    async unprepare(request: Request): Promise<void> {
+        try {
+            await Promise.all(this._pool.map(async (connection) => connection.unprepare(request)));
+        } catch (err) {
+            console.error('unprepare> ERROR>', err);
+            throw err;
+        }
     }
 
-    async newBulkLoad(tableName: string, callback: Function) {
-        const openConnection = await this.findConnection();
-        await this._pool[openConnection].newBulkLoad(tableName, callback);
-        return this._pool[openConnection];
+    async newBulkLoad(tableName: string, callback: Function): Promise<CONNECTION_POOLED> {
+        try {
+            const openConnection = await this.findConnection();
+            await this._pool[openConnection].newBulkLoad(tableName, callback);
+            return this._pool[openConnection];
+        } catch (err) {
+            console.error('newBulkLoad> ERROR>', err);
+            throw err;
+        }
     }
 }

@@ -17,7 +17,7 @@ Pool Config:
 
 ## Use
 ```
-const { ConnectionPool } = require('tedious-pool');
+const ConnectionPool = require('tedious-pool');
 
 const dbPool = new ConnectionPool(
     { // Database config

@@ -7,7 +7,7 @@ import { POOL_CONFIG, CONNECTION_POOLED } from './types';
  * http://tediousjs.github.io/tedious/api-connection.html
  */
 
-export class ConnectionPool implements ConnectionPool {
+export default class ConnectionPool implements ConnectionPool {
     _dbConfig: ConnectionConfig;
     _poolConfig: POOL_CONFIG = {
         min: 1,

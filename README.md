@@ -38,6 +38,7 @@ Pool Config:
 ## Usage
 ```
 const ConnectionPool = require('tedious-pool');
+const request = require('tedious').Request;
 
 const dbPool = new ConnectionPool(
     { // Database config
@@ -58,7 +59,7 @@ async function asyncRequest() {
     const request = new Request('SELECT someColumn FROM someTable', (err, rowCount, rows) => { /*...*/ } );
     // Handle request incoming data as per tedious
     request.on('row', (columns) => { /*...*/ });
-    await connectionPool.execSql(request);
+    await dbPool.execSql(request);
 }
 
 async function asyncTransaction() {
